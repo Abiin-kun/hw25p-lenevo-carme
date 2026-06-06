@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HW25P Watch Controller</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --accent: #38bdf8;
+            --success: #4ade80;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 5px 0; font-size: 1.8rem; color: var(--accent); }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .btn {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+        .btn:active { opacity: 0.8; }
+        .btn-green { background-color: var(--success); }
+        .value { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .label { color: #94a3b8; font-size: 0.9rem; }
+        .status { text-align: center; font-size: 0.9rem; color: #64748b; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>HW25P Controller</h1>
+            <div id="connection-status" class="status">Disconnected</div>
+        </header>
+
+        <div class="card">
+            <button id="btn-connect" class="btn" onclick="connect()">Connect Watch</button>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Battery Card -->
+            <div class="card">
+                <div class="row">
+                    <span class="label">Battery Level</span>
+                    <span id="battery" class="value">--%</span>
+                </div>
+            </div>
+
+            <!-- Steps Card -->
+            <div class="card">
+                <div class="row">
+                    <span class="label">Steps Taken</span>
+                    <span id="steps" class="value">0</span>
+                </div>
+                <div class="row">
+                    <span class="label">Distance Est.</span>
+                    <span id="distance" class="value">-- m</span>
+                </div>
+            </div>
+
+            <!-- Heart Rate Card -->
+            <div class="card">
+                <div class="row">
+                    <span class="label">Heart Rate</span>
+                    <span id="hr" class="value" style="color: #f43f5e;">-- bpm</span>
+                </div>
+                <button class="btn btn-green" onclick="triggerHR()" style="margin-top: 10px;">Trigger HR Laser</button>
+            </div>
+
+            <!-- Time Sync Card -->
+            <div class="card">
+                <button class="btn" onclick="syncTime()">Sync System Time</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVICE_FEEA = "0000feea-0000-1000-8000-00805f9b34fb";
+        const CHAR_FEE2_WRITE = "0000fee2-0000-1000-8000-00805f9b34fb";
+        const CHAR_FEE1_NOTIFY = "0000fee1-0000-1000-8000-00805f9b34fb";
+        const SERVICE_HR = "0000180d-0000-1000-8000-00805f9b34fb";
+        const CHAR_HR_MEAS = "00002a37-0000-1000-8000-00805f9b34fb";
+        const SERVICE_BATT = "0000180f-0000-1000-8000-00805f9b34fb";
+        const CHAR_BATT_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
+
+        let device, gattServer, feeaService, writeChar, batteryChar;
+
+        async function connect() {
+            const statusDiv = document.getElementById('connection-status');
+
+            // Check if Web Bluetooth is even available in the current context
+            if (!navigator.bluetooth) {
+                statusDiv.innerHTML = `
+                    <span style="color: #f43f5e; font-weight: bold;">Web Bluetooth is Blocked!</span><br>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">
+                        Ensure you are using Chrome/Edge, accessing via <b>http://localhost:8000</b> (not double-clicking the file), or serving over HTTPS.
+                    </span>
+                `;
+                return;
+            }
+
+            try {
+                statusDiv.innerText = "Requesting device...";
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'HW25P' },
+                        { namePrefix: 'Lenovo' }
+                    ],
+                    optionalServices: [
+                        SERVICE_FEEA,
+                        SERVICE_HR,
+                        SERVICE_BATT,
+                        "0000fee7-0000-1000-8000-00805f9b34fb" // Steps
+                    ]
+                });
+
+                statusDiv.innerText = "Connecting...";
+                gattServer = await device.gatt.connect();
+
+                // Services & Characteristics setup
+                feeaService = await gattServer.getPrimaryService(SERVICE_FEEA);
+                writeChar = await feeaService.getCharacteristic(CHAR_FEE2_WRITE);
+
+                // Subscribe to Steps (FEE1)
+                const fee1Char = await feeaService.getCharacteristic(CHAR_FEE1_NOTIFY);
+                await fee1Char.startNotifications();
+                fee1Char.addEventListener('characteristicvaluechanged', handleSteps);
+
+                // Subscribe to Heart Rate
+                const hrSvc = await gattServer.getPrimaryService(SERVICE_HR);
+                const hrChar = await hrSvc.getCharacteristic(CHAR_HR_MEAS);
+                await hrChar.startNotifications();
+                hrChar.addEventListener('characteristicvaluechanged', handleHR);
+
+                // Read Battery
+                const battSvc = await gattServer.getPrimaryService(SERVICE_BATT);
+                batteryChar = await battSvc.getCharacteristic(CHAR_BATT_LEVEL);
+                readBattery();
+
+                statusDiv.innerText = "Connected!";
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('btn-connect').style.display = 'none';
+
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+            } catch (err) {
+                statusDiv.innerText = "Error: " + err.message;
+            }
+        }
+
+        function onDisconnected() {
+            document.getElementById('connection-status').innerText = "Disconnected";
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('btn-connect').style.display = 'block';
+        }
+
+        async function readBattery() {
+            const val = await batteryChar.readValue();
+            document.getElementById('battery').innerText = val.getUint8(0) + "%";
+        }
+
+        function handleSteps(event) {
+            const data = event.target.value;
+            const steps = data.getUint16(0, true); // Little endian
+            const dist = data.getUint8(3);
+            document.getElementById('steps').innerText = steps.toLocaleString();
+            document.getElementById('distance').innerText = dist + " m";
+        }
+
+        function handleHR(event) {
+            const data = event.target.value;
+            const flags = data.getUint8(0);
+            const hr_u16 = flags & 0x01;
+            const hr = hr_u16 ? data.getUint16(1, true) : data.getUint8(1);
+            if (hr > 0) {
+                document.getElementById('hr').innerText = hr + " bpm";
+            }
+        }
+
+        async function writeDafitCmd(payload) {
+            // Buffer to 256 bytes
+            let buffer = new Uint8Array(256);
+            buffer.set(payload);
+
+            // Send in 20-byte chunks over GATT
+            for (let i = 0; i < 256; i += 20) {
+                let chunk = buffer.slice(i, i + 20);
+                await writeChar.writeValueWithoutResponse(chunk);
+                await new Promise(r => setTimeout(r, 10)); // 10ms delay
+            }
+        }
+
+        async function syncTime() {
+            const utc_ts = Math.floor(Date.now() / 1000);
+            const tz_offset_hours = -new Date().getTimezoneOffset() / 60;
+            const tz_byte = tz_offset_hours & 0xFF;
+
+            // V1 time sync packet
+            const payload = new Uint8Array([
+                0xFE, 0xEA, 0x10, 0x0A, 0x31,
+                (utc_ts >> 24) & 0xFF,
+                (utc_ts >> 16) & 0xFF,
+                (utc_ts >> 8) & 0xFF,
+                utc_ts & 0xFF,
+                tz_byte
+            ]);
+
+            await writeDafitCmd(payload);
+            alert("Time sync commands sent!");
+        }
+
+        async function triggerHR() {
+            // Da Fit V1 Wake commands
+            const cmd1 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x13, 0x01]);
+            const cmd2 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x15, 0x01]);
+
+            await writeDafitCmd(cmd1);
+            await new Promise(r => setTimeout(r, 150));
+            await writeDafitCmd(cmd2);
+        }
+    </script>
+</body>
+</html>
