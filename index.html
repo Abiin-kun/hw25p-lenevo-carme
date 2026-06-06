@@ -3,110 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HW25P Watch Controller</title>
+    <title>Lenovo Carme(hw25p) sync</title>
+    <!-- Google Fonts import for authentic monospace styling -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --text: #f8fafc;
-            --accent: #38bdf8;
-            --success: #4ade80;
+
+            --bg-color: #0d0518;
+            --text-main: #e2d9f3;
+            --text-muted: #a78bfa;
+            --accent-cyan: #00f0ff;
+            --accent-purple: #7c3aed;
+            --border-dashed: 1px dashed rgba(124, 58, 237, 0.4);
+            
+            /* Physical Shadow Specifications */
+            --brutalist-shadow-cyan: 4px 4px 0px var(--accent-cyan);
+            --brutalist-shadow-purple: 4px 4px 0px #030107;
+            --panel-shadow: 6px 6px 0px rgba(0, 240, 255, 0.15);
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
+
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', Consolas, Menlo, Monaco, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(rgba(124, 58, 237, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
+
         .container {
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
+
+        /* Top Navigation Header */
         header {
-            text-align: center;
-            margin-bottom: 30px;
+            text-align: left;
+            padding: 15px 10px;
+            border-bottom: var(--border-dashed);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        h1 { margin: 5px 0; font-size: 1.8rem; color: var(--accent); }
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+
+        .brand {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .btn {
-            background-color: var(--accent);
-            color: #000;
-            border: none;
-            padding: 12px 20px;
-            font-weight: bold;
+
+        .brand span {
+            color: var(--text-muted);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border: 1px solid var(--accent-purple);
+            background: rgba(124, 58, 237, 0.1);
+            color: var(--text-main);
+            border-radius: 4px;
+        }
+
+        /* Card Panels (Telemetry Boxes) */
+        .panel {
+            background-color: #120924;
+            border: 2px solid var(--accent-purple);
             border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 1rem;
-            transition: opacity 0.2s;
+            padding: 20px;
+            position: relative;
+            box-shadow: var(--panel-shadow);
         }
-        .btn:active { opacity: 0.8; }
-        .btn-green { background-color: var(--success); }
-        .value { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
-        .label { color: #94a3b8; font-size: 0.9rem; }
-        .status { text-align: center; font-size: 0.9rem; color: #64748b; margin-top: 10px; }
+
+        .panel-header {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+        }
+
+        .panel-header::before {
+            content: ">";
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        /* Dual telemetry register display */
+        .register-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .register {
+            background: rgba(13, 5, 24, 0.6);
+            border: 1px dashed rgba(124, 58, 237, 0.3);
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .register-lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .register-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        /* Brutalist Mechanical Buttons */
+        .btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 700;
+            padding: 14px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            outline: none;
+            width: 100%;
+            text-align: center;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        /* Solid Purple Button styling */
+        .btn-solid {
+            background-color: var(--accent-purple);
+            color: #fff;
+            border: 2px solid #000;
+            box-shadow: var(--brutalist-shadow-purple);
+        }
+
+        .btn-solid:hover {
+            opacity: 0.95;
+        }
+
+        .btn-solid:active {
+            box-shadow: none;
+            transform: translate(4px, 4px);
+        }
+
+        /* Outline Cyan Button styling */
+        .btn-outline {
+            background-color: transparent;
+            color: var(--accent-cyan);
+            border: 2px solid var(--accent-cyan);
+            box-shadow: var(--brutalist-shadow-cyan);
+        }
+
+        .btn-outline:hover {
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        .btn-outline:active {
+            box-shadow: none;
+            transform: translate(4px, 4px);
+        }
+
+        /* Telemetry Console Logger Box */
+        .console-box {
+            background-color: #030107;
+            border: 1px solid var(--border-dashed);
+            border-radius: 6px;
+            padding: 12px;
+            height: 130px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .console-header {
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            border-bottom: var(--border-dashed);
+            padding-bottom: 6px;
+            margin-bottom: 4px;
+        }
+
+        .console-logs {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            scroll-behavior: smooth;
+        }
+
+        .log-entry {
+            line-height: 1.3;
+            font-family: inherit;
+        }
+
+        .log-time { color: var(--accent-purple); margin-right: 6px; }
+        .log-sys { color: var(--accent-cyan); }
+        .log-error { color: #f43f5e; }
+
+        /* Animation overlay warning block */
+        .warning-overlay {
+            color: #f43f5e;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            border: 2px solid #f43f5e;
+            background: rgba(244, 63, 94, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Dashboard Header Navigation block -->
         <header>
-            <h1>Lenevo HW25P</h1>
-            <div id="connection-status" class="status">Disconnected</div>
+            <div class="brand"><span>LENOVO_CARME::</span>SYNC</div>
+            <div id="connection-status" class="status-badge">STANDBY</div>
         </header>
 
-        <div class="card">
-            <button id="btn-connect" class="btn" onclick="connect()">Connect Watch</button>
+        <!-- Connectivity Switch trigger panel -->
+        <div class="panel" id="panel-link">
+            <div class="panel-header">GATT Server Authorization</div>
+            <button id="btn-connect" class="btn btn-solid" onclick="connect()">Establish Link(::connect)</button>
+            <div id="bluetooth-blocked-warn" class="warning-overlay" style="display: none;"></div>
         </div>
 
+        <!-- Hidden telemetry registers showing system states -->
         <div id="dashboard" style="display: none;">
-            <!-- Battery Card -->
-            <div class="card">
-                <div class="row">
-                    <span class="label">Battery Level</span>
-                    <span id="battery" class="value">--%</span>
+            
+            <!-- Battery Diagnostics -->
+            <div class="panel">
+                <div class="panel-header">Power Registry Status(::battery)</div>
+                <div class="register-row">
+                    <div class="register">
+                        <div class="register-lbl">Voltage State</div>
+                        <div id="battery" class="register-val">--%</div>
+                    </div>
+                    <div class="register">
+                        <div class="register-lbl">Telemetry Sync</div>
+                        <div class="register-val" style="color: var(--text-muted);">ACTIVE</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Steps Card -->
-            <div class="card">
-                <div class="row">
-                    <span class="label">Steps Taken</span>
-                    <span id="steps" class="value">0</span>
-                </div>
-                <div class="row">
-                    <span class="label">Distance Est.</span>
-                    <span id="distance" class="value">-- m</span>
+            <!-- Activity Telemetry Registers -->
+            <div class="panel">
+                <div class="panel-header">Pedometer registers [FEE1_CCCD]</div>
+                <div class="register-row">
+                    <div class="register">
+                        <div class="register-lbl">Steps Accumulator</div>
+                        <div id="steps" class="register-val">0</div>
+                    </div>
+                    <div class="register">
+                        <div class="register-lbl">Calculated distance</div>
+                        <div id="distance" class="register-val">-- m</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Heart Rate Card -->
-            <div class="card">
-                <div class="row">
-                    <span class="label">Heart Rate</span>
-                    <span id="hr" class="value" style="color: #f43f5e;">-- bpm</span>
+            <!-- Heart Rate registry with interactive command trigger -->
+            <div class="panel">
+                <div class="panel-header">HR Telemetry register [0x2A37]</div>
+                <div class="register-row" style="margin-bottom: 15px;">
+                    <div class="register" style="grid-column: span 2;">
+                        <div class="register-lbl">Telemetry pulse rate</div>
+                        <div id="hr" class="register-val" style="color: #f43f5e;">-- bpm</div>
+                    </div>
                 </div>
-                <button class="btn btn-green" onclick="triggerHR()" style="margin-top: 10px;">Trigger HR Laser</button>
+                <button class="btn btn-outline" onclick="triggerHR()">Trigger HR Telemetry</button>
             </div>
 
-            <!-- Time Sync Card -->
-            <div class="card">
-                <button class="btn" onclick="syncTime()">Sync System Time</button>
+            <!-- System sync operation command -->
+            <div class="panel">
+                <div class="panel-header">Internal System Time Calibration</div>
+                <button class="btn btn-solid" onclick="syncTime()">Commit Time Calibration(::sync time)</button>
+            </div>
+        </div>
+
+        <!-- Serial Telemetry Logging console -->
+        <div class="console-box">
+            <div class="console-header">SERIAL TELEMETRY LOGGER</div>
+            <div id="console-logs" class="console-logs">
+                <div class="log-entry"><span class="log-time">00:00:00</span> <span class="log-sys">[SYS]</span> INITIALIZED. STANDBY FOR LINK...</div>
             </div>
         </div>
     </div>
 
     <script>
+        // UUIDs from standard configuration
         const SERVICE_FEEA = "0000feea-0000-1000-8000-00805f9b34fb";
         const CHAR_FEE2_WRITE = "0000fee2-0000-1000-8000-00805f9b34fb";
         const CHAR_FEE1_NOTIFY = "0000fee1-0000-1000-8000-00805f9b34fb";
@@ -117,22 +331,39 @@
 
         let device, gattServer, feeaService, writeChar, batteryChar;
 
+        // Custom Console log helper
+        function consoleLog(msg, type = "SYS") {
+            const container = document.getElementById("console-logs");
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            let badgeClass = "log-sys";
+            if (type === "ERROR") badgeClass = "log-error";
+            
+            entry.innerHTML = `<span class="log-time">${timeStr}</span> <span class="${badgeClass}">[${type}]</span> ${msg}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
         async function connect() {
             const statusDiv = document.getElementById('connection-status');
+            const warnBlock = document.getElementById('bluetooth-blocked-warn');
 
-            // Check if Web Bluetooth is even available in the current context
+            // Secure Context checks [1]
             if (!navigator.bluetooth) {
-                statusDiv.innerHTML = `
-                    <span style="color: #f43f5e; font-weight: bold;">Web Bluetooth is Blocked!</span><br>
-                    <span style="font-size: 0.8rem; color: #94a3b8;">
-                        Ensure you are using Chrome/Edge, accessing via <b>http://localhost:8000</b> (not double-clicking the file), or serving over HTTPS.
-                    </span>
+                consoleLog("Web Bluetooth blocked by local context.", "ERROR");
+                warnBlock.innerHTML = `
+                    <strong>WEB BLUETOOTH BLOCKED!</strong><br>
+                    Ensure your layout context is secure. Server must run on <strong>localhost:8000</strong> or standard <strong>HTTPS</strong>. Double clicking local file URI (file://) is prohibited by browser policy.
                 `;
+                warnBlock.style.display = 'block';
                 return;
             }
 
             try {
-                statusDiv.innerText = "Requesting device...";
+                consoleLog("Opening BLE peripheral selection request dialog...", "SYS");
                 device = await navigator.bluetooth.requestDevice({
                     filters: [
                         { namePrefix: 'HW25P' },
@@ -142,60 +373,84 @@
                         SERVICE_FEEA,
                         SERVICE_HR,
                         SERVICE_BATT,
-                        "0000fee7-0000-1000-8000-00805f9b34fb" // Steps
+                        "0000fee7-0000-1000-8000-00805f9b34fb" // Steps telemetry channel
                     ]
                 });
 
-                statusDiv.innerText = "Connecting...";
+                consoleLog(`Target confirmed: ${device.name}. Initiating handshakes...`);
+                statusDiv.innerText = "LINKING";
+                
                 gattServer = await device.gatt.connect();
+                consoleLog("✓ Connection established at hardware level.");
 
                 // Services & Characteristics setup
+                consoleLog("Searching primary FEEA control configuration service...");
                 feeaService = await gattServer.getPrimaryService(SERVICE_FEEA);
                 writeChar = await feeaService.getCharacteristic(CHAR_FEE2_WRITE);
 
-                // Subscribe to Steps (FEE1)
+                // Subscribe to Pedometer telemetry
+                consoleLog("Activating pedometer stream subscription [FEE1]...");
                 const fee1Char = await feeaService.getCharacteristic(CHAR_FEE1_NOTIFY);
                 await fee1Char.startNotifications();
                 fee1Char.addEventListener('characteristicvaluechanged', handleSteps);
 
-                // Subscribe to Heart Rate
+                // Subscribe to Heart Rate stream
+                consoleLog("Activating HR stream subscription [0x2A37]...");
                 const hrSvc = await gattServer.getPrimaryService(SERVICE_HR);
                 const hrChar = await hrSvc.getCharacteristic(CHAR_HR_MEAS);
                 await hrChar.startNotifications();
                 hrChar.addEventListener('characteristicvaluechanged', handleHR);
 
-                // Read Battery
+                // Read Battery Voltage metric
+                consoleLog("Retrieving static voltage levels [0x2A19]...");
                 const battSvc = await gattServer.getPrimaryService(SERVICE_BATT);
                 batteryChar = await battSvc.getCharacteristic(CHAR_BATT_LEVEL);
                 readBattery();
 
-                statusDiv.innerText = "Connected!";
+                statusDiv.innerText = "CONNECTED";
+                statusDiv.style.borderColor = "var(--accent-cyan)";
+                statusDiv.style.color = "var(--accent-cyan)";
+                
                 document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('btn-connect').style.display = 'none';
+                document.getElementById('panel-link').style.display = 'none';
 
                 device.addEventListener('gattserverdisconnected', onDisconnected);
             } catch (err) {
-                statusDiv.innerText = "Error: " + err.message;
+                consoleLog(err.message, "ERROR");
+                statusDiv.innerText = "FAULT";
+                statusDiv.style.borderColor = "#f43f5e";
+                statusDiv.style.color = "#f43f5e";
             }
         }
 
         function onDisconnected() {
-            document.getElementById('connection-status').innerText = "Disconnected";
+            consoleLog("GATT Server link severed by host or peripheral.", "ERROR");
+            document.getElementById('connection-status').innerText = "OFFLINE";
+            document.getElementById('connection-status').style.borderColor = "var(--text-muted)";
+            document.getElementById('connection-status').style.color = "var(--text-muted)";
             document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('btn-connect').style.display = 'block';
+            document.getElementById('panel-link').style.display = 'block';
         }
 
         async function readBattery() {
-            const val = await batteryChar.readValue();
-            document.getElementById('battery').innerText = val.getUint8(0) + "%";
+            try {
+                const val = await batteryChar.readValue();
+                const level = val.getUint8(0);
+                document.getElementById('battery').innerText = level + "%";
+                consoleLog(`Register read update: Battery at ${level}%`);
+            } catch(e) {
+                consoleLog("Failed to read battery characteristic", "ERROR");
+            }
         }
 
         function handleSteps(event) {
             const data = event.target.value;
-            const steps = data.getUint16(0, true); // Little endian
+            const steps = data.getUint16(0, true); 
             const dist = data.getUint8(3);
+            
             document.getElementById('steps').innerText = steps.toLocaleString();
             document.getElementById('distance').innerText = dist + " m";
+            consoleLog(`[CCCD Notify] FEE1 Register Activity updated: Steps=${steps}, Distance=${dist}m`);
         }
 
         function handleHR(event) {
@@ -205,19 +460,21 @@
             const hr = hr_u16 ? data.getUint16(1, true) : data.getUint8(1);
             if (hr > 0) {
                 document.getElementById('hr').innerText = hr + " bpm";
+                consoleLog(`[CCCD Notify] HR Registry value updated: ${hr} bpm`);
             }
         }
 
         async function writeDafitCmd(payload) {
-            // Buffer to 256 bytes
+            // Buffer exactly 256 bytes for V1 firmware structure requirements
             let buffer = new Uint8Array(256);
             buffer.set(payload);
 
+            consoleLog(`Streaming 256-byte payload buffer to Write Handle [0x0037]...`);
             // Send in 20-byte chunks over GATT
             for (let i = 0; i < 256; i += 20) {
                 let chunk = buffer.slice(i, i + 20);
                 await writeChar.writeValueWithoutResponse(chunk);
-                await new Promise(r => setTimeout(r, 10)); // 10ms delay
+                await new Promise(r => setTimeout(r, 10)); // 10ms buffer delay
             }
         }
 
@@ -226,7 +483,8 @@
             const tz_offset_hours = -new Date().getTimezoneOffset() / 60;
             const tz_byte = tz_offset_hours & 0xFF;
 
-            // V1 time sync packet
+            consoleLog(`Executing system time sync: Epoch=${utc_ts} (Offset=${tz_offset_hours})`);
+            // V1 time sync packet structure
             const payload = new Uint8Array([
                 0xFE, 0xEA, 0x10, 0x0A, 0x31,
                 (utc_ts >> 24) & 0xFF,
@@ -236,18 +494,27 @@
                 tz_byte
             ]);
 
-            await writeDafitCmd(payload);
-            alert("Time sync commands sent!");
+            try {
+                await writeDafitCmd(payload);
+                consoleLog("✓ Time sync payload block committed successfully.");
+            } catch(e) {
+                consoleLog(`Time sync payload failed: ${e.message}`, "ERROR");
+            }
         }
 
         async function triggerHR() {
-            // Da Fit V1 Wake commands
+            consoleLog("Broadcasting physical HR Sensor Wake payloads via FEE2...");
             const cmd1 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x13, 0x01]);
             const cmd2 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x15, 0x01]);
 
-            await writeDafitCmd(cmd1);
-            await new Promise(r => setTimeout(r, 150));
-            await writeDafitCmd(cmd2);
+            try {
+                await writeDafitCmd(cmd1);
+                await new Promise(r => setTimeout(r, 150));
+                await writeDafitCmd(cmd2);
+                consoleLog("✓ HR remote activation instructions completed.");
+            } catch(e) {
+                consoleLog(`HR remote activation failure: ${e.message}`, "ERROR");
+            }
         }
     </script>
 </body>
