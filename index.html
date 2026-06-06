@@ -465,16 +465,28 @@
         }
 
         async function writeDafitCmd(payload) {
-            // Buffer exactly 256 bytes for V1 firmware structure requirements
             let buffer = new Uint8Array(256);
             buffer.set(payload);
 
-            consoleLog(`Streaming 256-byte payload buffer to Write Handle [0x0037]...`);
-            // Send in 20-byte chunks over GATT
+            consoleLog(`Streaming 256-byte payload buffer...`);
             for (let i = 0; i < 256; i += 20) {
                 let chunk = buffer.slice(i, i + 20);
                 await writeChar.writeValueWithoutResponse(chunk);
-                await new Promise(r => setTimeout(r, 10)); // 10ms buffer delay
+                // Increased delay to 30ms to prevent overwhelming the watch MCU
+                await new Promise(r => setTimeout(r, 30)); 
+            }
+        }
+
+        async function triggerHR() {
+            consoleLog("Broadcasting HR Wake command...");
+            // Only send ONE wake command instead of flooding it with multiple commands
+            const cmd = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x13, 0x01]);
+
+            try {
+                await writeDafitCmd(cmd);
+                consoleLog("✓ HR instructions sent. Tap your watch HR screen if it didn't wake up.");
+            } catch(e) {
+                consoleLog(`HR remote activation failure: ${e.message}`, "ERROR");
             }
         }
 
@@ -502,20 +514,7 @@
             }
         }
 
-        async function triggerHR() {
-            consoleLog("Broadcasting physical HR Sensor Wake payloads via FEE2...");
-            const cmd1 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x13, 0x01]);
-            const cmd2 = new Uint8Array([0xFE, 0xEA, 0x10, 0x06, 0x15, 0x01]);
-
-            try {
-                await writeDafitCmd(cmd1);
-                await new Promise(r => setTimeout(r, 150));
-                await writeDafitCmd(cmd2);
-                consoleLog("✓ HR remote activation instructions completed.");
-            } catch(e) {
-                consoleLog(`HR remote activation failure: ${e.message}`, "ERROR");
-            }
-        }
+        
     </script>
 </body>
 </html>
